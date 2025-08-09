@@ -9,10 +9,10 @@ const register = async (req, res) => {
     const existUser = await User.findOne({ email });
 
     if (existUser) {
-      res.status(400).json({ message: "User already exist" });
+      return res.status(409).json({ message: "User already exist" });
     }
 
-    const hashPass = bcrypt.hashSync(password, 10);
+    const hashPass = await bcrypt.hash(password, 10);
 
     const newUser = new User({
       name,
@@ -35,19 +35,26 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      res.status(400).json({ message: "User not exist please register first" });
+      return res
+        .status(404)
+        .json({ message: "User not exist please register first" });
     }
 
     const passCheck = await bcrypt.compare(password, user.password);
     if (!passCheck) {
-      res.status(404).json({ message: "Invalid Credential" });
+      return res.status(403).json({ message: "Invalid Credential" });
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false, // set true in production (HTTPS)
+      maxAge: 86400000,
+    });
 
-    res.status(200).json({ token });
+    res.status(200).json({ message: "Login Succesfully" });
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
     console.log(error);
